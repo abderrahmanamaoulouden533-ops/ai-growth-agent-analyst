@@ -1,0 +1,16 @@
+{
+    "ad_spend": 1000,
+    "submissions": 50,
+    "leads_ge_31": 25,
+    "leads_ge_61": 10,
+    "appointments": 5,
+    "closed_won_value": 1500,
+    "prev_stage_leads": 100,
+    "curr_stage_leads": 50,
+    "total_minutes_contact": 120,
+    "contacts_count": 8,
+    "replied_first_contacts": 5,
+    "total_first_contacts": 10,
+    "showed_up": 4,
+    "total_meetings": 5
+}
