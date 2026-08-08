@@ -11,6 +11,7 @@ import httpx
 from datetime import datetime, timedelta
 from common.db import get_db_connection
 from common.logging import log_action
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 MEDIA_BUYER_URL = os.getenv("MEDIA_BUYER_URL", "https://media.aphelionxcore.com")
 
@@ -33,6 +34,11 @@ def get_closed_won_deals(client_id: str, days: int = 7):
     return rows
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type(Exception)
+)
 def push_conversion_to_media_buyer(deal_data: dict, dry_run: bool = True) -> bool:
     """
     Envoie un deal au Media Buyer pour Conversion API.
@@ -56,10 +62,14 @@ def push_conversion_to_media_buyer(deal_data: dict, dry_run: bool = True) -> boo
                 f"{MEDIA_BUYER_URL}/crm/push-segment",
                 json=payload
             )
-            return resp.status_code == 200
+            if resp.status_code == 200:
+                return True
+            else:
+                # Lever une exception pour que tenacity retente
+                raise Exception(f"HTTP {resp.status_code}: {resp.text}")
     except Exception as e:
         print(f"⚠️ Erreur push conversion: {e}")
-        return False
+        raise  # Relancer pour permettre le retry
 
 
 def run_conversion_push(client_id: str = "client_test_123", dry_run: bool = True):
