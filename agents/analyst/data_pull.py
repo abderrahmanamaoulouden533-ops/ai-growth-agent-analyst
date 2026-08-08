@@ -15,6 +15,17 @@ import psycopg2
 
 
 def get_ad_spend(client_id: str, start_date: str, end_date: str) -> float:
+    """
+    Retourne le total des dépenses publicitaires pour un client sur une période.
+
+    Args:
+        client_id: Identifiant du client.
+        start_date: Date de début (format YYYY-MM-DD).
+        end_date: Date de fin (format YYYY-MM-DD).
+
+    Returns:
+        float: Total des dépenses.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -29,6 +40,17 @@ def get_ad_spend(client_id: str, start_date: str, end_date: str) -> float:
 
 
 def get_total_form_submissions(client_id: str, start_date: str, end_date: str) -> int:
+    """
+    Compte les leads créés dans la période (tous les leads).
+
+    Args:
+        client_id: Identifiant du client.
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        int: Nombre de leads créés.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -43,6 +65,18 @@ def get_total_form_submissions(client_id: str, start_date: str, end_date: str) -
 
 
 def get_leads_with_score_ge(client_id: str, min_score: int, start_date: str, end_date: str) -> int:
+    """
+    Compte les leads avec un score >= min_score sur la période.
+
+    Args:
+        client_id: Identifiant du client.
+        min_score: Score minimum (31 pour MQL, 61 pour SQL).
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        int: Nombre de leads avec score >= min_score.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -59,6 +93,17 @@ def get_leads_with_score_ge(client_id: str, min_score: int, start_date: str, end
 
 
 def get_appointments_booked(client_id: str, start_date: str, end_date: str) -> int:
+    """
+    Compte les rendez-vous pris sur la période.
+
+    Args:
+        client_id: Identifiant du client.
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        int: Nombre de rendez-vous pris.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -75,6 +120,17 @@ def get_appointments_booked(client_id: str, start_date: str, end_date: str) -> i
 
 
 def get_closed_won_value(client_id: str, start_date: str, end_date: str) -> float:
+    """
+    Total des valeurs des deals closed_won sur la période.
+
+    Args:
+        client_id: Identifiant du client.
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        float: Total des valeurs closed_won.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -91,6 +147,18 @@ def get_closed_won_value(client_id: str, start_date: str, end_date: str) -> floa
 
 
 def get_stage_counts(client_id: str, stage: str, start_date: str, end_date: str) -> int:
+    """
+    Compte les leads dans une étape donnée sur une période.
+
+    Args:
+        client_id: Identifiant du client.
+        stage: Étape du pipeline (new, mql, sql, contacted, meeting_booked, closed_won, closed_lost).
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        int: Nombre de leads dans l'étape.
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -106,14 +174,18 @@ def get_stage_counts(client_id: str, stage: str, start_date: str, end_date: str)
     return count
 
 
-# ======================================================================
-# KPIs dynamiques (Phase B – 3 métriques)
-# ======================================================================
-
 def get_time_to_first_contact(client_id: str, start_date: str, end_date: str) -> dict:
     """
     Calcule le temps moyen (en minutes) entre la création d'un lead et le premier message du Closer.
     Target: under 5 minutes.
+
+    Args:
+        client_id: Identifiant du client.
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        dict: {"total_minutes": float, "count": int}
     """
     conn = get_db_connection()
     cur = conn.cursor()
@@ -140,6 +212,14 @@ def get_time_to_first_contact(client_id: str, start_date: str, end_date: str) ->
 def get_response_rate(client_id: str, start_date: str, end_date: str) -> dict:
     """
     Calcule le taux de réponse aux premiers messages dans les 48h.
+
+    Args:
+        client_id: Identifiant du client.
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        dict: {"replied_first_contacts": int, "total_first_contacts": int}
     """
     conn = get_db_connection()
     cur = conn.cursor()
@@ -168,6 +248,14 @@ def get_response_rate(client_id: str, start_date: str, end_date: str) -> dict:
 def get_meeting_show_rate(client_id: str, start_date: str, end_date: str) -> dict:
     """
     Calcule le taux de présence aux rendez-vous.
+
+    Args:
+        client_id: Identifiant du client.
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        dict: {"total_meetings": int, "showed_up": int}
     """
     conn = get_db_connection()
     cur = conn.cursor()
@@ -189,6 +277,17 @@ def get_meeting_show_rate(client_id: str, start_date: str, end_date: str) -> dic
 
 
 def get_all_kpi_data(client_id: str, start_date: str, end_date: str) -> dict:
+    """
+    Récupère toutes les données nécessaires pour les KPIs en une seule fois.
+
+    Args:
+        client_id: Identifiant du client.
+        start_date: Date de début.
+        end_date: Date de fin.
+
+    Returns:
+        dict: Dictionnaire contenant toutes les données pour les KPIs.
+    """
     ad_spend = get_ad_spend(client_id, start_date, end_date)
     submissions = get_total_form_submissions(client_id, start_date, end_date)
     leads_ge_31 = get_leads_with_score_ge(client_id, 31, start_date, end_date)
@@ -199,7 +298,6 @@ def get_all_kpi_data(client_id: str, start_date: str, end_date: str) -> dict:
     new_leads = get_stage_counts(client_id, 'new', start_date, end_date)
     mql_leads = get_stage_counts(client_id, 'mql', start_date, end_date)
 
-    # KPIs dynamiques
     time_data = get_time_to_first_contact(client_id, start_date, end_date)
     resp_data = get_response_rate(client_id, start_date, end_date)
     show_data = get_meeting_show_rate(client_id, start_date, end_date)

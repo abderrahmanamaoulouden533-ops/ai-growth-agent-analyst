@@ -13,7 +13,15 @@ from common.logging import log_action
 
 
 def get_pipeline_volume(client_id: str) -> dict:
-    """Volume de leads par stage."""
+    """
+    Volume de leads par stage.
+
+    Args:
+        client_id: Identifiant du client.
+
+    Returns:
+        dict: {stage: count, ...}
+    """
     conn = get_db_connection()
     cur = conn.cursor()
     stages = ['new', 'mql', 'sql', 'contacted', 'meeting_booked']
@@ -32,9 +40,14 @@ def get_pipeline_volume(client_id: str) -> dict:
 def get_historical_conversion_rates(client_id: str) -> dict:
     """
     Taux de conversion historiques par transition.
-    À remplacer par une vraie requête sur lead_events quand disponible.
+
+    Args:
+        client_id: Identifiant du client.
+
+    Returns:
+        dict: {transition: rate, ...}
     """
-    # Valeurs par défaut (à calibrer avec des données réelles plus tard)
+    # À remplacer par une vraie requête sur lead_events quand disponible
     return {
         "new_to_mql": 0.35,
         "mql_to_sql": 0.45,
@@ -47,6 +60,23 @@ def get_historical_conversion_rates(client_id: str) -> dict:
 def predict_revenue(client_id: str, avg_deal_value: float = 5000) -> dict:
     """
     Prédit les revenus sur 30 jours.
+
+    Args:
+        client_id: Identifiant du client.
+        avg_deal_value: Valeur moyenne d'un deal (par défaut 5000€).
+
+    Returns:
+        dict: {
+            "status": "success" | "insufficient_data",
+            "expected_revenue_range": {"low": float, "high": float},
+            "assumptions": {
+                "avg_deal_value": float,
+                "historical_rates": dict,
+                "pipeline_volume": dict,
+                "total_pipeline": int,
+                "projected_deals": float
+            }
+        }
     """
     pipeline = get_pipeline_volume(client_id)
     rates = get_historical_conversion_rates(client_id)
@@ -58,7 +88,6 @@ def predict_revenue(client_id: str, avg_deal_value: float = 5000) -> dict:
             "message": f"Pipeline trop faible ({total_pipeline} leads) pour une prédiction fiable"
         }
 
-    # Projection : leads actuels → closed_won dans 30 jours
     mql_to_sql = pipeline.get('mql', 0) * rates.get('mql_to_sql', 0.45)
     sql_to_meeting = (
         pipeline.get('sql', 0) * 
@@ -86,7 +115,16 @@ def predict_revenue(client_id: str, avg_deal_value: float = 5000) -> dict:
 
 
 def run_prediction(client_id: str = "client_test_123", avg_deal_value: float = 5000) -> dict:
-    """Exécute la prédiction et la logue."""
+    """
+    Exécute la prédiction et la logue.
+
+    Args:
+        client_id: Identifiant du client.
+        avg_deal_value: Valeur moyenne d'un deal.
+
+    Returns:
+        dict: Résultat de la prédiction.
+    """
     result = predict_revenue(client_id, avg_deal_value)
     
     log_action(
