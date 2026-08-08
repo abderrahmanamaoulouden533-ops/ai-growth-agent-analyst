@@ -1,4 +1,3 @@
-
 """
 data_pull.py
 Lecture des données depuis PostgreSQL pour les métriques.
@@ -107,6 +106,88 @@ def get_stage_counts(client_id: str, stage: str, start_date: str, end_date: str)
     return count
 
 
+# ======================================================================
+# KPIs dynamiques (Phase B – 3 métriques)
+# ======================================================================
+
+def get_time_to_first_contact(client_id: str, start_date: str, end_date: str) -> dict:
+    """
+    Calcule le temps moyen (en minutes) entre la création d'un lead et le premier message du Closer.
+    Target: under 5 minutes.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT 
+            AVG(EXTRACT(EPOCH FROM (cl.timestamp - l.created_at)) / 60) as avg_minutes,
+            COUNT(DISTINCT l.lead_id) as contact_count
+        FROM agent_logs cl
+        JOIN leads l ON cl.lead_id = l.lead_id::text
+        WHERE l.client_id = %s
+          AND cl.agent_name = 'closer'
+          AND cl.action_type = 'send_message'
+          AND l.created_at::date BETWEEN %s::date AND %s::date
+          AND cl.timestamp > l.created_at
+    """, (client_id, start_date, end_date))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    avg_minutes = row[0] if row and row[0] is not None else 0.0
+    count = row[1] if row and row[1] is not None else 0
+    return {"total_minutes": float(avg_minutes), "count": int(count)}
+
+
+def get_response_rate(client_id: str, start_date: str, end_date: str) -> dict:
+    """
+    Calcule le taux de réponse aux premiers messages dans les 48h.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT 
+            COUNT(DISTINCT l.lead_id) as total_first_contacts,
+            COUNT(DISTINCT r.lead_id) as replied
+        FROM agent_logs l
+        LEFT JOIN agent_logs r ON l.lead_id = r.lead_id
+            AND r.action_type = 'reply'
+            AND r.agent_name = 'analyst'
+            AND r.timestamp BETWEEN l.timestamp AND l.timestamp + INTERVAL '48 hours'
+        WHERE l.client_id = %s
+          AND l.agent_name = 'closer'
+          AND l.action_type = 'send_message'
+          AND l.timestamp::date BETWEEN %s::date AND %s::date
+    """, (client_id, start_date, end_date))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    total = row[0] if row and row[0] is not None else 0
+    replied = row[1] if row and row[1] is not None else 0
+    return {"replied_first_contacts": int(replied), "total_first_contacts": int(total)}
+
+
+def get_meeting_show_rate(client_id: str, start_date: str, end_date: str) -> dict:
+    """
+    Calcule le taux de présence aux rendez-vous.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT 
+            COUNT(*) as total_booked,
+            COUNT(CASE WHEN showed_up = true THEN 1 END) as showed_up
+        FROM bookings b
+        JOIN leads l ON b.lead_id = l.lead_id
+        WHERE l.client_id = %s
+          AND b.booked_at::date BETWEEN %s::date AND %s::date
+    """, (client_id, start_date, end_date))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    total = row[0] if row and row[0] is not None else 0
+    showed = row[1] if row and row[1] is not None else 0
+    return {"total_meetings": int(total), "showed_up": int(showed)}
+
+
 def get_all_kpi_data(client_id: str, start_date: str, end_date: str) -> dict:
     ad_spend = get_ad_spend(client_id, start_date, end_date)
     submissions = get_total_form_submissions(client_id, start_date, end_date)
@@ -118,12 +199,10 @@ def get_all_kpi_data(client_id: str, start_date: str, end_date: str) -> dict:
     new_leads = get_stage_counts(client_id, 'new', start_date, end_date)
     mql_leads = get_stage_counts(client_id, 'mql', start_date, end_date)
 
-    total_minutes_contact = 120.0
-    contacts_count = 8
-    replied_first_contacts = 5
-    total_first_contacts = 10
-    showed_up = 4
-    total_meetings = 5
+    # KPIs dynamiques
+    time_data = get_time_to_first_contact(client_id, start_date, end_date)
+    resp_data = get_response_rate(client_id, start_date, end_date)
+    show_data = get_meeting_show_rate(client_id, start_date, end_date)
 
     return {
         "ad_spend": ad_spend,
@@ -134,10 +213,10 @@ def get_all_kpi_data(client_id: str, start_date: str, end_date: str) -> dict:
         "closed_won_value": closed_value,
         "prev_stage_leads": new_leads,
         "curr_stage_leads": mql_leads,
-        "total_minutes_contact": total_minutes_contact,
-        "contacts_count": contacts_count,
-        "replied_first_contacts": replied_first_contacts,
-        "total_first_contacts": total_first_contacts,
-        "showed_up": showed_up,
-        "total_meetings": total_meetings
+        "total_minutes_contact": time_data["total_minutes"],
+        "contacts_count": time_data["count"],
+        "replied_first_contacts": resp_data["replied_first_contacts"],
+        "total_first_contacts": resp_data["total_first_contacts"],
+        "showed_up": show_data["showed_up"],
+        "total_meetings": show_data["total_meetings"]
     }
