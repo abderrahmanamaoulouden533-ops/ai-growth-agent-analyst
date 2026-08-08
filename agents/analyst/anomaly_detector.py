@@ -5,10 +5,10 @@ Détection d'anomalies (chute de conversion > 50%).
 
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from datetime import datetime, timedelta
-from data_pull import get_all_kpi_data
+from agents.analyst.data_pull import get_all_kpi_data
 from common.metrics import stage_conversion_rate
 
 ANOMALY_THRESHOLD_PCT = 50
@@ -23,7 +23,7 @@ def get_utc_now():
         return datetime.utcnow()
 
 
-def check_anomalies(client_id: str):
+def check_anomalies(client_id: str = "client_test_123"):
     now = get_utc_now()
     end_date = now.strftime("%Y-%m-%d")
     start_date = (now - timedelta(days=7)).strftime("%Y-%m-%d")

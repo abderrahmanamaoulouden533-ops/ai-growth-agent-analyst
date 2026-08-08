@@ -23,33 +23,15 @@ from common.tracing import get_tracer
 from common.db import get_db_connection
 from common.logging import log_action
 
-# --- Import de predictive_roas ---
-try:
-    from agents.analyst.predictive_roas import run_prediction
-except ImportError:
-    run_prediction = None
-    print("⚠️ predictive_roas non disponible")
-
-# --- Import de cohort_analysis ---
-try:
-    from agents.analyst.cohort_analysis import run_cohort_analysis
-except ImportError:
-    run_cohort_analysis = None
-    print("⚠️ cohort_analysis non disponible")
-
-# --- Import de scoring_feedback ---
-try:
-    from agents.analyst.scoring_feedback import run_scoring_feedback
-except ImportError:
-    run_scoring_feedback = None
-    print("⚠️ scoring_feedback non disponible")
-
-# --- Import de ab_test_conclusions ---
-try:
-    from agents.analyst.ab_test_conclusions import run_ab_test_conclusion
-except ImportError:
-    run_ab_test_conclusion = None
-    print("⚠️ ab_test_conclusions non disponible")
+# --- Imports directs (sans try/except) ---
+from agents.analyst.predictive_roas import run_prediction
+from agents.analyst.cohort_analysis import run_cohort_analysis
+from agents.analyst.scoring_feedback import run_scoring_feedback
+from agents.analyst.ab_test_conclusions import run_ab_test_conclusion
+from agents.analyst.weekly_report import generate_weekly_optimization
+from agents.analyst.anomaly_detector import check_anomalies
+from agents.analyst.landing_pages import flag_underperforming_pages
+from agents.analyst.scheduler import start_scheduler
 
 # Import du décorateur observe avec fallback
 try:
@@ -58,32 +40,6 @@ except ImportError:
     def observe(*args, **kwargs):
         return lambda func: func
     print("⚠️ Langfuse non installé, décorateur observe désactivé")
-
-# Imports optionnels
-try:
-    from agents.analyst.weekly_report import generate_weekly_optimization
-except ImportError:
-    generate_weekly_optimization = None
-    print("⚠️ weekly_report non disponible")
-
-try:
-    from agents.analyst.anomaly_detector import check_anomalies
-except ImportError:
-    check_anomalies = None
-    print("⚠️ anomaly_detector non disponible")
-
-try:
-    from agents.analyst.landing_pages import flag_underperforming_pages
-except ImportError:
-    flag_underperforming_pages = None
-    print("⚠️ landing_pages non disponible")
-
-try:
-    from agents.analyst.scheduler import start_scheduler
-except ImportError:
-    def start_scheduler():
-        print("⚠️ Scheduler non disponible")
-    print("⚠️ scheduler non disponible")
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 if not TELEGRAM_TOKEN:
@@ -234,8 +190,8 @@ async def health(update, context):
         cur.close()
         conn.close()
         db_status = "✅ PostgreSQL : OK"
-    except Exception as e:
-        db_status = f"❌ PostgreSQL : {e}"
+    except Exception:
+        db_status = "❌ PostgreSQL : Erreur de connexion"
 
     tracer = get_tracer()
     lf_status = "✅ Langfuse : OK" if tracer else "⚠️ Langfuse : non initialisé"
@@ -258,28 +214,22 @@ async def health(update, context):
 
 
 async def weekly_report_command(update, context):
-    if generate_weekly_optimization is None:
-        await update.message.reply_text("❌ Module weekly_report non disponible.")
-        return
     try:
         report = generate_weekly_optimization("client_test_123")
         await update.message.reply_text(report, parse_mode='Markdown')
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erreur : {e}")
+    except Exception:
+        await update.message.reply_text("❌ Une erreur est survenue lors de la génération du rapport.")
 
 
 async def alerts_command(update, context):
-    if check_anomalies is None:
-        await update.message.reply_text("❌ Module anomaly_detector non disponible.")
-        return
     try:
         alert = check_anomalies("client_test_123")
         if alert:
             await update.message.reply_text(f"🚨 {alert}")
         else:
             await update.message.reply_text("✅ Aucune anomalie détectée.")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erreur : {e}")
+    except Exception:
+        await update.message.reply_text("❌ Une erreur est survenue lors de la détection des anomalies.")
 
 
 async def observe_command(update, context):
@@ -288,9 +238,6 @@ async def observe_command(update, context):
 
 
 async def landing_command(update, context):
-    if flag_underperforming_pages is None:
-        await update.message.reply_text("❌ Module landing_pages non disponible.")
-        return
     client_id = "client_test_123"
     now = datetime.utcnow()
     end = now.strftime("%Y-%m-%d")
@@ -305,8 +252,8 @@ async def landing_command(update, context):
             msg += f"📄 {f['page_url']}\n"
             msg += f"   Taux : {f['conversion_rate']:.1f}% (visiteurs: {f['visitors']}, conversions: {f['submissions']})\n"
         await update.message.reply_text(msg, parse_mode='Markdown')
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erreur : {e}")
+    except Exception:
+        await update.message.reply_text("❌ Une erreur est survenue lors de l'analyse des pages.")
 
 
 # =========================================================================
@@ -314,9 +261,6 @@ async def landing_command(update, context):
 # =========================================================================
 async def predict_command(update, context):
     """Prédiction ROAS sur 30 jours."""
-    if run_prediction is None:
-        await update.message.reply_text("❌ Module predictive_roas non disponible.")
-        return
     try:
         result = run_prediction()
         if result['status'] == 'insufficient_data':
@@ -330,8 +274,8 @@ async def predict_command(update, context):
         msg += f"🎯 Deals projetés : {result['assumptions']['projected_deals']:.1f}\n"
         msg += f"📌 Deal moyen : {result['assumptions']['avg_deal_value']:.0f}€"
         await update.message.reply_text(msg, parse_mode='Markdown')
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erreur : {e}")
+    except Exception:
+        await update.message.reply_text("❌ Une erreur est survenue lors de la prédiction.")
 
 
 # =========================================================================
@@ -339,9 +283,6 @@ async def predict_command(update, context):
 # =========================================================================
 async def cohort_command(update, context):
     """Analyse des cohortes."""
-    if run_cohort_analysis is None:
-        await update.message.reply_text("❌ Module cohort_analysis non disponible.")
-        return
     try:
         result = run_cohort_analysis()
         if result["status"] == "no_data":
@@ -353,8 +294,8 @@ async def cohort_command(update, context):
             msg += f"  • {source}: {data['conversion_rate']:.1f}% ({data['closed']}/{data['total']})\n"
         msg += f"\n🏆 *Meilleure source* : {result['best_source']} ({result['best_rate']:.1f}%)"
         await update.message.reply_text(msg, parse_mode='Markdown')
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erreur : {e}")
+    except Exception:
+        await update.message.reply_text("❌ Une erreur est survenue lors de l'analyse des cohortes.")
 
 
 # =========================================================================
@@ -362,9 +303,6 @@ async def cohort_command(update, context):
 # =========================================================================
 async def scoring_command(update, context):
     """Affiche la précision du modèle de scoring (Qualifier)."""
-    if run_scoring_feedback is None:
-        await update.message.reply_text("❌ Module scoring_feedback non disponible.")
-        return
     try:
         result = run_scoring_feedback()
         if result["status"] == "no_data":
@@ -376,8 +314,8 @@ async def scoring_command(update, context):
         msg += f"📈 Rappel : {result['recall']:.2f}\n"
         msg += f"📌 Échantillons : {result['samples']}"
         await update.message.reply_text(msg, parse_mode='Markdown')
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erreur : {e}")
+    except Exception:
+        await update.message.reply_text("❌ Une erreur est survenue lors de l'évaluation du scoring.")
 
 
 # =========================================================================
@@ -385,11 +323,7 @@ async def scoring_command(update, context):
 # =========================================================================
 async def abtest_command(update, context):
     """Affiche la conclusion du dernier A/B test."""
-    if run_ab_test_conclusion is None:
-        await update.message.reply_text("❌ Module ab_test_conclusions non disponible.")
-        return
     try:
-        # Par défaut, on utilise test_id="test_1"
         result = run_ab_test_conclusion(test_id="test_1")
         if result["status"] == "insufficient_data":
             await update.message.reply_text(f"⚠️ Données insuffisantes : {result.get('message', '')}")
@@ -406,8 +340,8 @@ async def abtest_command(update, context):
             msg += f"📊 p-value : {result['p_value']:.4f}\n"
             msg += f"⚠️ Pas de différence significative"
         await update.message.reply_text(msg, parse_mode='Markdown')
-    except Exception as e:
-        await update.message.reply_text(f"❌ Erreur : {e}")
+    except Exception:
+        await update.message.reply_text("❌ Une erreur est survenue lors de l'analyse du test A/B.")
 
 
 # =========================================================================
@@ -426,9 +360,10 @@ def main():
     app.add_handler(CommandHandler("landing", landing_command))
     app.add_handler(CommandHandler("predict", predict_command))
     app.add_handler(CommandHandler("cohort", cohort_command))
-    app.add_handler(CommandHandler("scoring", scoring_command))   # <-- NOUVEAU
-    app.add_handler(CommandHandler("abtest", abtest_command))     # <-- NOUVEAU
+    app.add_handler(CommandHandler("scoring", scoring_command))
+    app.add_handler(CommandHandler("abtest", abtest_command))
 
+    # Démarrer le scheduler
     start_scheduler()
 
     print("🤖 Agent Analyst bot démarré. Envoyez /help pour la liste des commandes.")
