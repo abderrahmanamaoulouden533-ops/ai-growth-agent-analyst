@@ -1,7 +1,7 @@
 [project]
 name = "agent-analyst"
 version = "1.0.0"
-description = "Agent Analyst - Marketing Automation System (Phases A et B)"
+description = "Agent Analyst - AI Growth Automation System"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -21,6 +21,18 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-cov", "black", "ruff"]
+
+[tool.setuptools]
+# On spécifie explicitement les packages à inclure
+packages = ["agents", "common", "config", "migrations", "scripts", "tests"]
+
+[tool.setuptools.package-dir]
+agents = "agents"
+common = "common"
+config = "config"
+migrations = "migrations"
+scripts = "scripts"
+tests = "tests"
 
 [build-system]
 requires = ["setuptools>=61.0"]
