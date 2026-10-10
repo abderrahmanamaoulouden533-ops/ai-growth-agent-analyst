@@ -81,7 +81,7 @@ flowchart TD
 ```bash
 # Cloner le dépôt
 git clone https://github.com/abderrahmanamaoulouden533-ops/ai-growth-agent-analyst.git
-cd agent-analyst-phaseA
+cd ai-growth-agent-analyst
 
 # Installer les dépendances
 uv sync
@@ -96,7 +96,6 @@ uv run uvicorn agents.analyst.api:app --host 0.0.0.0 --port 8008
 # Lancer le bot Telegram
 uv run python agents/analyst/telegram_report.py
 ```
-
 ---
 
 ## 🔌 API REST — Endpoints principaux
