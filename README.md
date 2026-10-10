@@ -17,19 +17,19 @@ Agent Analyst est le module d'analyse et de reporting d'un système multi-agents
 
 ```mermaid
 flowchart TD
-    A[Agents Amont<br/>CRM Keeper, Qualifier, Media Buyer] --> B[Data Pull Layer<br/>PostgreSQL]
+    A[Agents Amont - CRM Keeper, Qualifier, Media Buyer] --> B[Data Pull Layer - PostgreSQL]
     B --> C[Agent Analyst]
     C --> C1[Calcul des 9 KPIs]
     C --> C2[Détection d'anomalies]
-    C --> C3[Attribution<br/>campagne / ad set / asset]
+    C --> C3[Attribution - campagne / ad set / asset]
     C --> C4[Analyse de cohortes]
-    C --> C5[Prédiction ROAS<br/>30 jours]
+    C --> C5[Prédiction ROAS - 30 jours]
     C --> C6[Feedback scoring]
     C --> C7[Conclusions A/B tests]
     C --> D[Canaux de sortie]
-    D --> D1[API REST FastAPI<br/>10 endpoints]
-    D --> D2[Bot Telegram<br/>12 commandes]
-    D --> D3[Langfuse<br/>traces et évaluations]
+    D --> D1[API REST FastAPI - 10 endpoints]
+    D --> D2[Bot Telegram - 12 commandes]
+    D --> D3[Langfuse - traces et évaluations]
 ```
 
 ---
