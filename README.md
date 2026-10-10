@@ -80,7 +80,7 @@ flowchart TD
 
 ```bash
 # Cloner le dépôt
-git clone https://github.com/abderrahmanamaoulouden533-ops/agent-analyst-phaseA.git
+git clone https://github.com/abderrahmanamaoulouden533-ops/ai-growth-agent-analyst.git
 cd agent-analyst-phaseA
 
 # Installer les dépendances
